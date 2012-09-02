@@ -1,0 +1,36 @@
+// Create the design for your site below
+/* SITE-WIDE DESIGN -------------------------------------------------------------- */
+
+@import '/js/sources/gridster.js/dist/jquery.gridster.css';
+@import '../fonts/Font-Awesome/sass/font-awesome.scss';
+
+body{
+  background: teal;
+}
+
+ul{
+  display: block;
+  padding: 0;
+  margin: auto;
+}
+
+li{
+  background: white;
+  list-style: none;
+}
+
+.table{
+  display: table;
+  width: 100%;
+  height: 100%;
+  .table-cell{
+    display: table-cell;
+    vertical-align: middle;
+  }
+  p{
+    // font: font-style font-variant font-weight font-size/line-height font-family;
+    font: normal 40px 'FontAwesome';
+    text-align: center;
+    margin: 0;
+  }
+}

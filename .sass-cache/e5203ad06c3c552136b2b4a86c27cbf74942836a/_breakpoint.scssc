@@ -1,0 +1,1151 @@
+3.2.0.alpha.261 (Bleeding Edge)
+800353d84a6cec2f5dba9068fbbf5028e391ff57
+o:Sass::Tree::RootNode
+:
+@linei:@has_childrenT:@template"m //////////////////////////////
+// Default Variables
+//////////////////////////////
+$breakpoint-default-feature:  'min-width' !default;
+$breakpoint-default-media:    'all'       !default;
+$breakpoint-default-pair:     'width'     !default;
+$breakpoint-to-ems:           false       !default;
+
+//////////////////////////////
+// Breakpoint Mixin
+//////////////////////////////
+@mixin breakpoint($breakpoint, $media: $breakpoint-default-media) {
+  // Query and Media String Defaults
+  $query:         false !default;
+  $query-holder:  false !default;
+  $media-string:  false !default;
+  
+  // Holder for Count;
+  $first:         true  !default;
+  
+  // Initialize Query String
+  @if $media != 'all' {
+    $media-string: "#{$media} ";
+  }
+  @else {
+    $media-string: "";
+  }
+  
+  // If we have a single query, let's just work with that.
+  @if type-of(nth($breakpoint, 1)) != 'list' {
+    $query: breakpoint-switch($breakpoint, $media-string, true);
+  }
+  @else {
+    @each $bkpt in $breakpoint {
+      @if $first == true {
+        $query: breakpoint-switch($bkpt, $media-string, true);
+        $first: false;
+      }
+      @else {
+        $query: join($query, breakpoint-switch($bkpt, $media-string));
+      }
+    }
+  }
+  
+  @media #{$query} {
+    @content;
+  }
+}
+
+@function breakpoint-switch($breakpoint, $media-string, $first: false) {
+  // Feature/Value/Length/Query Placehoders:
+  $feature:       false !default;
+  $min-feature:   "min-#{$breakpoint-default-pair}" !default;
+  $max-feature:   "max-#{$breakpoint-default-pair}" !default;
+  $value:         false !default;
+  $min-value:     false !default;
+  $max-value:     false !default;
+  $length:        false !default;
+  $query:         false !default;
+  
+  $length: length($breakpoint);
+  // Check to see if there is only one item.
+  @if $length == 1 {
+    $value: $breakpoint;
+    @if type-of($breakpoint) == 'number' {
+      $feature: $breakpoint-default-feature;
+    }
+    
+    // If EM Breakpoints are active, do it!
+    @if $breakpoint-to-ems and type-of($value) == 'number' {
+      $value: breakpoint-to-base-em($value);
+    }
+    // Build the Query
+    $query: breakpoint-generate($media-string, $feature, $value, $first);
+  }
+  @else if $length == 2 {
+    // If both are numbers, we've got a double!
+    @if type-of(nth($breakpoint, 1)) == 'number' and type-of(nth($breakpoint, 2)) == 'number' {
+      // See which is larger.
+      @if nth($breakpoint, 1) > nth($breakpoint, 2) {
+        $min-value: nth($breakpoint, 2);
+        $max-value: nth($breakpoint, 1);
+      }
+      @else {
+        $min-value: nth($breakpoint, 1);
+        $max-value: nth($breakpoint, 2);
+      }
+      
+      // If EM Breakpoints are active, do it!
+      @if $breakpoint-to-ems and type-of($min-value) == 'number' {
+        $min-value: breakpoint-to-base-em($min-value);
+      }
+      @if $breakpoint-to-ems and type-of($max-value) == 'number' {
+        $max-value: breakpoint-to-base-em($max-value);
+      }
+      
+      // Min/Max for given
+      $query: breakpoint-generate($media-string, $min-feature, $min-value, $first);
+      $query: join($query, breakpoint-generate($media-string, $max-feature, $max-value));
+    }
+    @else if type-of(nth($breakpoint, 1)) == 'string' and type-of(nth($breakpoint, 2)) == 'string' {
+      @if breakpoint-string-value(nth($breakpoint, 1)) == true {
+        $feature: nth($breakpoint, 1);
+        $value: nth($breakpoint, 2);
+      }
+      @else {
+        $feature: nth($breakpoint, 2);
+        $value: nth($breakpoint, 1);
+      }
+      
+      // If EM Breakpoints are active, do it!
+      @if $breakpoint-to-ems and type-of($value) == 'number' {
+        $value: breakpoint-to-base-em($value);
+      }
+      
+      // Build the Query
+      $query: breakpoint-generate($media-string, $feature, $value, $first);
+    }
+    @else {
+      // Because we can have either the first or second option be the feature, we switch on it.
+      @if type-of(nth($breakpoint, 1)) == string {
+        $feature: nth($breakpoint, 1);
+        $value: nth($breakpoint, 2);
+      }
+      @else if type-of(nth($breakpoint, 2)) == string {
+        $feature: nth($breakpoint, 2);
+        $value: nth($breakpoint, 1);
+      }
+      
+      @if $feature == 'device-pixel-ratio' or $feature == 'min-device-pixel-ratio' or $feature == 'max-device-pixel-ratio' {
+        $value: 96 * $value * 1dpi;
+        @if $feature == 'device-pixel-ratio' {
+          $feature: 'resolution';
+        }
+        @else if $feature == 'min-device-pixel-ratio' {
+          $feature: 'min-resolution';
+        }
+        @else if $feature == 'max-device-pixel-ratio' {
+          $feature: 'max-resolution';
+        }
+      }
+      
+      // If EM Breakpoints are active, do it!
+      @if $breakpoint-to-ems and type-of($value) == 'number' {
+        $value: breakpoint-to-base-em($value);
+      }
+      
+      // Build the Query
+      $query: breakpoint-generate($media-string, $feature, $value, $first);
+    }
+  }
+  @else if $length == 3 {
+    @if type-of(nth($breakpoint, 1)) == 'string' {
+      $feature: nth($breakpoint, 1);
+      // See which is larger.
+      @if nth($breakpoint, 2) > nth($breakpoint, 3) {
+        $min-value: nth($breakpoint, 3);
+        $max-value: nth($breakpoint, 2);
+      }
+      @else {
+        $min-value: nth($breakpoint, 2);
+        $max-value: nth($breakpoint, 3);
+      }
+    }
+    @else {
+      $feature: nth($breakpoint, 3);
+      // See which is larger.
+      @if nth($breakpoint, 1) > nth($breakpoint, 2) {
+        $min-value: nth($breakpoint, 2);
+        $max-value: nth($breakpoint, 1);
+      }
+      @else {
+        $min-value: nth($breakpoint, 1);
+        $max-value: nth($breakpoint, 2);
+      }
+    }
+    
+    @if $feature == 'device-pixel-ratio' {
+      $min-value: 96 * $min-value * 1dpi;
+      $max-value: 96 * $max-value * 1dpi;
+      $feature: 'resolution';
+    }
+    
+    // If EM Breakpoints are active, do it!
+    @if $breakpoint-to-ems and type-of($min-value) == 'number' {
+      $min-value: breakpoint-to-base-em($min-value);
+    }
+    @if $breakpoint-to-ems and type-of($max-value) == 'number' {
+      $max-value: breakpoint-to-base-em($max-value);
+    }
+    
+    @if breakpoint-min-max($feature) == true {
+      $min-feature: 'min-#{$feature}';
+      $max-feature: 'max-#{$feature}';
+
+      // Min/Max for given
+      $query: breakpoint-generate($media-string, $min-feature, $min-value, $first);
+      $query: join($query, breakpoint-generate($media-string, $max-feature, $max-value));
+    }
+    @else {
+      @warn '#{$feature} cannot have a min/max value!';
+    }
+  }
+  
+  @return $query;
+}
+
+@function breakpoint-generate($media, $feature, $value, $first: false) {
+  // Media Query string to be returned
+  $new-string: "";
+  
+  // If it's the first item, it gets special treatment
+  @if $first == true {
+    // And Statement
+    $and: 'and ';
+    // If $media is blank (i.e. all), remove and statement
+    @if $media == '' {
+      $and: '';
+    }
+    
+    @if $feature != false {
+      $new-string: #{$media}unquote("#{$and}(#{$feature}: #{$value})");
+    }
+    @else {
+      $new-string: #{$media}unquote("#{$and}(#{$value})");
+    }
+  }
+  
+  @else {
+    @if $feature != false {
+      $new-string: unquote("and (#{$feature}: #{$value})");
+    }
+    @else {
+      $new-string: unquote("and (#{$value})");
+    }
+  }
+  
+  @return $new-string;
+}
+
+@function breakpoint-to-base-em($value) {
+  $unit: unit($value);
+  
+  @if $unit == 'px' {
+    @return $value / 16px * 1em;
+  }
+  @else if $unit == '%' {
+    @return $value / 100% * 1em;
+  }
+  @else if $unit == 'em' {
+    @return $value;
+  }
+  @else if $unit == 'pt' {
+    @return $value / 12pt * 1em;
+  }
+  @else {
+    @return $value;
+//    @warn 'Everything is terrible! What have you done?!';
+  }
+}
+
+@function breakpoint-min-max($feature) {
+  @if $feature == 'color' or $feature == 'color-index' or $feature == 'aspect-ratio' or $feature == 'device-height' or $feature == 'device-width' or $feature == 'height' or $feature == 'monochrome' or $feature == 'resolution' or $feature == 'width' or $feature == 'device-pixel-ratio' {
+    @return true;
+  }
+  @else {
+    @return false;
+  }
+}
+
+@function breakpoint-string-value($feature) {
+  @if $feature == 'orientation' or $feature == 'scan' or $feature == 'color' {
+    @return true;
+  }
+  @else {
+    @return false;
+  }
+}:@children[o:Sass::Tree::CommentNode
+:
+@type:silent:@value["Z/*////////////////////////////
+ * Default Variables
+ *//////////////////////////// */;i;	[ :@options{ o:Sass::Tree::VariableNode:
+@name"breakpoint-default-feature:
+@expro:Sass::Script::String	;:string;"min-width;i	;@;i	;	[ ;@:@guarded"!defaulto;;"breakpoint-default-media;o;	;;;"all;i
+;@;i
+;	[ ;@;"!defaulto;;"breakpoint-default-pair;o;	;;;"
+width;i;@;i;	[ ;@;"!defaulto;;"breakpoint-to-ems;o:Sass::Script::Bool;F;i;@;i;	[ ;@;"!defaulto;
+
+;;;["Y/*////////////////////////////
+ * Breakpoint Mixin
+ *//////////////////////////// */;i;	[ ;@o:Sass::Tree::MixinDefNode;"breakpoint;i;T;	[o;
+
+;;;["*/* Query and Media String Defaults */;i;	[ ;@o;;"
+query;o;;F;i;@;i;	[ ;@;"!defaulto;;"query-holder;o;;F;i;@;i;	[ ;@;"!defaulto;;"media-string;o;;F;i;@;i;	[ ;@;"!defaulto;
+
+;;;["/* Holder for Count; */;i;	[ ;@o;;"
+first;o;;T;i;@;i;	[ ;@;"!defaulto;
+
+;;;[""/* Initialize Query String */;i;	[ ;@u:Sass::Tree::IfNode}[o:Sass::Script::Operation
+:@operator:neq:
+@linei:@operand2o:Sass::Script::String	:
+@type:string:@value"all;i:@options{ :@operand1o:Sass::Script::Variable	:
+@name"
+media;i;@	:@underscored_name"
+media;@	u:Sass::Tree::IfNode¶[00[o:Sass::Tree::VariableNode:
+@name"media-string:
+@expro:Sass::Script::String	:
+@type:string:@value" :
+@linei:@options{ ;i:@children[ ;@:@guarded0[o:Sass::Tree::VariableNode;"media-string:
+@expro:&Sass::Script::StringInterpolation
+:@beforeo;
+	;;;" ;i;@	;i:@aftero;
+	;;;" ;i;@	;@	:	@mido;	;"
+media;i;@	;"
+media;i:@children[ ;@	:@guarded0o;
+
+;;;["@/* If we have a single query, let's just work with that. */;i";	[ ;@u;‘[o:Sass::Script::Operation
+:@operator:neq:
+@linei#:@operand2o:Sass::Script::String	:
+@type:string:@value"	list;i#:@options{ :@operand1o:Sass::Script::Funcall
+:
+@name"type-of;i#:@keywords{ ;@	:
+@args[o;
+;"nth;i#;{ ;@	;[o:Sass::Script::Variable	;"breakpoint;i#;@	:@underscored_name"breakpointo:Sass::Script::Number:@original"1:@numerator_units[ ;i;i#;@	:@denominator_units[ ;@	u:Sass::Tree::IfNode,[00[o:Sass::Tree::EachNode:
+@linei':	@var"	bkpt:@has_childrenT:
+@listo:Sass::Script::Variable	:
+@name"breakpoint;i':@options{ :@underscored_name"breakpoint:@children[u:Sass::Tree::IfNode[[o:Sass::Script::Operation
+:@operator:eq:
+@linei(:@operand2o:Sass::Script::Bool:@valueT;i(:@options{ :@operand1o:Sass::Script::Variable	:
+@name"
+first;i(;@:@underscored_name"
+first;@u:Sass::Tree::IfNode[[00[o:Sass::Tree::VariableNode:
+@name"
+query:
+@expro:Sass::Script::Funcall
+;"	join:
+@linei-:@keywords{ :@options{ :
+@args[o:Sass::Script::Variable	;"
+query;	i-;@:@underscored_name"
+queryo;
+;"breakpoint-switch;	i-;
+{ ;@;[o;	;"	bkpt;	i-;@;"	bkpto;	;"media-string;	i-;@;"media_string;	i-:@children[ ;@:@guarded0[o:Sass::Tree::VariableNode;"
+query:
+@expro:Sass::Script::Funcall
+;"breakpoint-switch;i):@keywords{ ;@:
+@args[o;	;"	bkpt;i);@;"	bkpto;	;"media-string;i);@;"media_stringo;
+;T;i);@;i):@children[ ;@:@guarded0o;;"
+first;o;
+;F;i*;@;i*;[ ;@;0;@[o:Sass::Tree::VariableNode;"
+query:
+@expro;
+;"breakpoint-switch;i$;{ ;@	;[o;	;"breakpoint;i$;@	;"breakpointo;	;"media-string;i$;@	;"media_stringo:Sass::Script::Bool;T;i$;@	;i$:@children[ ;@	:@guarded0o:Sass::Tree::MediaNode;" ;i2;T:@query[o:Sass::Script::Variable	;"
+query;i2;@:@underscored_name"
+query:
+@tabsi ;	[o:Sass::Tree::ContentNode;i3;	[ ;@;@;@:
+@args[[o;;"breakpoint;@;"breakpoint0[o;;"
+media;@;"
+mediao;	;"breakpoint-default-media;i;@;"breakpoint_default_mediao:Sass::Tree::FunctionNode;"breakpoint-switch;i7;T;	[o;
+
+;;;["2/* Feature/Value/Length/Query Placehoders: */;i8;	[ ;@o;;"feature;o;;F;i9;@;i9;	[ ;@;"!defaulto;;"min-feature;o:&Sass::Script::StringInterpolation
+:@beforeo;	;;;"	min-;i:;@;i::@aftero;	;;;" ;i:;@;@:	@mido;	;"breakpoint-default-pair;i:;@;"breakpoint_default_pair;i:;	[ ;@;"!defaulto;;"max-feature;o; 
+;!o;	;;;"	max-;i;;@;i;;"o;	;;;" ;i;;@;@;#o;	;"breakpoint-default-pair;i;;@;"breakpoint_default_pair;i;;	[ ;@;"!defaulto;;"
+value;o;;F;i<;@;i<;	[ ;@;"!defaulto;;"min-value;o;;F;i=;@;i=;	[ ;@;"!defaulto;;"max-value;o;;F;i>;@;i>;	[ ;@;"!defaulto;;"length;o;;F;i?;@;i?;	[ ;@;"!defaulto;;"
+query;o;;F;i@;@;i@;	[ ;@;"!defaulto;;"length;o:Sass::Script::Funcall
+;"length;iB:@keywords{ ;@;[o;	;"breakpoint;iB;@;"breakpoint;iB;	[ ;@;0o;
+
+;;;["2/* Check to see if there is only one item. */;iC;	[ ;@u;ÚQ[o:Sass::Script::Operation
+:@operator:eq:
+@lineiD:@operand2o:Sass::Script::Number:@original"1:@numerator_units[ :@valuei;iD:@options{ :@denominator_units[ :@operand1o:Sass::Script::Variable	:
+@name"length;iD;@
+:@underscored_name"length;@
+u:Sass::Tree::IfNodeÙJ[o:Sass::Script::Operation
+:@operator:eq:
+@lineiQ:@operand2o:Sass::Script::Number:@original"2:@numerator_units[ :@valuei;iQ:@options{ :@denominator_units[ :@operand1o:Sass::Script::Variable	:
+@name"length;iQ;@
+:@underscored_name"length;@
+u:Sass::Tree::IfNode⁄[o:Sass::Script::Operation
+:@operator:eq:
+@lineiò:@operand2o:Sass::Script::Number:@original"3:@numerator_units[ :@valuei;iò:@options{ :@denominator_units[ :@operand1o:Sass::Script::Variable	:
+@name"length;iò;@
+:@underscored_name"length;@
+0[u:Sass::Tree::IfNodeo[o:Sass::Script::Operation
+:@operator:eq:
+@lineiô:@operand2o:Sass::Script::String	:
+@type:string:@value"string;iô:@options{ :@operand1o:Sass::Script::Funcall
+:
+@name"type-of;iô:@keywords{ ;@	:
+@args[o;
+;"nth;iô;{ ;@	;[o:Sass::Script::Variable	;"breakpoint;iô;@	:@underscored_name"breakpointo:Sass::Script::Number:@original"1:@numerator_units[ ;i;iô;@	:@denominator_units[ ;@	u:Sass::Tree::IfNodeµ[00[o:Sass::Tree::VariableNode:
+@name"feature:
+@expro:Sass::Script::Funcall
+;"nth:
+@linei¶:@keywords{ :@options{ :
+@args[o:Sass::Script::Variable	;"breakpoint;	i¶;@:@underscored_name"breakpointo:Sass::Script::Number:@original"3:@numerator_units[ :@valuei;	i¶;@:@denominator_units[ ;	i¶:@children[ ;@:@guarded0o:Sass::Tree::CommentNode
+:
+@type:silent;["/* See which is larger. */;	iß;[ ;@u:Sass::Tree::IfNodeÎ[o:Sass::Script::Operation
+:@operator:gt:
+@linei®:@operand2o:Sass::Script::Funcall
+:
+@name"nth;i®:@keywords{ :@options{ :
+@args[o:Sass::Script::Variable	;"breakpoint;i®;@
+:@underscored_name"breakpointo:Sass::Script::Number:@original"2:@numerator_units[ :@valuei;i®;@
+:@denominator_units[ :@operand1o;
+
+;"nth;i®;{ ;@
+;[o;	;"breakpoint;i®;@
+;"breakpointo;;"1;[ ;i;i®;@
+;@;@
+u:Sass::Tree::IfNode„[00[o:Sass::Tree::VariableNode:
+@name"min-value:
+@expro:Sass::Script::Funcall
+;"nth:
+@linei≠:@keywords{ :@options{ :
+@args[o:Sass::Script::Variable	;"breakpoint;	i≠;@:@underscored_name"breakpointo:Sass::Script::Number:@original"1:@numerator_units[ :@valuei;	i≠;@:@denominator_units[ ;	i≠:@children[ ;@:@guarded0o; ;"max-value;o;
+;"nth;	iÆ;
+{ ;@;[o;	;"breakpoint;	iÆ;@;"breakpointo;;"2;[ ;i;	iÆ;@;@;	iÆ;[ ;@;0[o:Sass::Tree::VariableNode;"min-value:
+@expro;
+
+;"nth;i©;{ ;@
+;[o;	;"breakpoint;i©;@
+;"breakpointo;;"2;[ ;i;i©;@
+;@;i©:@children[ ;@
+:@guarded0o;;"max-value;o;
+
+;"nth;i™;{ ;@
+;[o;	;"breakpoint;i™;@
+;"breakpointo;;"1;[ ;i;i™;@
+;@;i™;[ ;@
+;0[o:Sass::Tree::VariableNode;"feature:
+@expro;
+;"nth;iö;{ ;@	;[o;	;"breakpoint;iö;@	;"breakpointo;;"1;[ ;i;iö;@	;@;iö:@children[ ;@	:@guarded0o:Sass::Tree::CommentNode
+;:silent;["/* See which is larger. */;iõ;[ ;@	u;Î[o:Sass::Script::Operation
+:@operator:gt:
+@lineiú:@operand2o:Sass::Script::Funcall
+:
+@name"nth;iú:@keywords{ :@options{ :
+@args[o:Sass::Script::Variable	;"breakpoint;iú;@
+:@underscored_name"breakpointo:Sass::Script::Number:@original"3:@numerator_units[ :@valuei;iú;@
+:@denominator_units[ :@operand1o;
+
+;"nth;iú;{ ;@
+;[o;	;"breakpoint;iú;@
+;"breakpointo;;"2;[ ;i;iú;@
+;@;@
+u:Sass::Tree::IfNode„[00[o:Sass::Tree::VariableNode:
+@name"min-value:
+@expro:Sass::Script::Funcall
+;"nth:
+@linei°:@keywords{ :@options{ :
+@args[o:Sass::Script::Variable	;"breakpoint;	i°;@:@underscored_name"breakpointo:Sass::Script::Number:@original"2:@numerator_units[ :@valuei;	i°;@:@denominator_units[ ;	i°:@children[ ;@:@guarded0o; ;"max-value;o;
+;"nth;	i¢;
+{ ;@;[o;	;"breakpoint;	i¢;@;"breakpointo;;"3;[ ;i;	i¢;@;@;	i¢;[ ;@;0[o:Sass::Tree::VariableNode;"min-value:
+@expro;
+
+;"nth;iù;{ ;@
+;[o;	;"breakpoint;iù;@
+;"breakpointo;;"3;[ ;i;iù;@
+;@;iù:@children[ ;@
+:@guarded0o;;"max-value;o;
+
+;"nth;iû;{ ;@
+;[o;	;"breakpoint;iû;@
+;"breakpointo;;"2;[ ;i;iû;@
+;@;iû;[ ;@
+;0u;[o:Sass::Script::Operation
+:@operator:eq:
+@linei≤:@operand2o:Sass::Script::String	:
+@type:string:@value"device-pixel-ratio;i≤:@options{ :@operand1o:Sass::Script::Variable	:
+@name"feature;i≤;@	:@underscored_name"feature;@	0[o:Sass::Tree::VariableNode;"min-value:
+@expro; 
+;:
+times;i≥;	o:Sass::Script::Number:@original"	1dpi:@numerator_units["dpi;i;i≥;@	:@denominator_units[ ;o; 
+;;;i≥;	o;	;"min-value;i≥;@	;"min_value;o;;"96;[ ;ie;i≥;@	;[ ;@	;@	;i≥:@children[ ;@	:@guarded0o;;"max-value;o; 
+;;;i¥;	o;;"	1dpi;["dpi;i;i¥;@	;[ ;o; 
+;;;i¥;	o;	;"max-value;i¥;@	;"max_value;o;;"96;[ ;ie;i¥;@	;@;@	;@	;i¥;[ ;@	;0o;;"feature;o;
+	;;;"resolution;iµ;@	;iµ;[ ;@	;0o:Sass::Tree::CommentNode
+:
+@type:silent;["//* If EM Breakpoints are active, do it! */;i∏:@children[ ;@
+u;([o:Sass::Script::Operation
+:@operator:and:
+@lineiπ:@operand2o; 
+;:eq;iπ;	o:Sass::Script::String	:
+@type:string:@value"number;iπ:@options{ :@operand1o:Sass::Script::Funcall
+:
+@name"type-of;iπ:@keywords{ ;@
+:
+@args[o:Sass::Script::Variable	;"min-value;iπ;@
+:@underscored_name"min_value;@
+;o;	;"breakpoint-to-ems;iπ;@
+;"breakpoint_to_ems;@
+0[o:Sass::Tree::VariableNode;"min-value:
+@expro;
+;"breakpoint-to-base-em;i∫;{ ;@
+;[o;	;"min-value;i∫;@
+;"min_value;i∫:@children[ ;@
+:@guarded0u;([o:Sass::Script::Operation
+:@operator:and:
+@lineiº:@operand2o; 
+;:eq;iº;	o:Sass::Script::String	:
+@type:string:@value"number;iº:@options{ :@operand1o:Sass::Script::Funcall
+:
+@name"type-of;iº:@keywords{ ;@
+:
+@args[o:Sass::Script::Variable	;"max-value;iº;@
+:@underscored_name"max_value;@
+;o;	;"breakpoint-to-ems;iº;@
+;"breakpoint_to_ems;@
+0[o:Sass::Tree::VariableNode;"max-value:
+@expro;
+;"breakpoint-to-base-em;iΩ;{ ;@
+;[o;	;"max-value;iΩ;@
+;"max_value;iΩ:@children[ ;@
+:@guarded0u;R[o:Sass::Script::Operation
+:@operator:eq:
+@linei¿:@operand2o:Sass::Script::Bool:@valueT;i¿:@options{ :@operand1o:Sass::Script::Funcall
+:
+@name"breakpoint-min-max;i¿:@keywords{ ;@:
+@args[o:Sass::Script::Variable	;"feature;i¿;@:@underscored_name"feature;@u:Sass::Tree::IfNodeJ[00[o:Sass::Tree::WarnNode	:
+@expro:&Sass::Script::StringInterpolation
+:@beforeo:Sass::Script::String	:
+@type:string:@value" :
+@linei…:@options{ ;i…:@aftero;		;
+;;"" cannot have a min/max value!;i…;@;@:	@mido:Sass::Script::Variable	:
+@name"feature;i…;@:@underscored_name"feature;i…:@children[ ;@[
+o:Sass::Tree::VariableNode;"min-feature:
+@expro:&Sass::Script::StringInterpolation
+:@beforeo:Sass::Script::String	:
+@type:string;"	min-;i¡;@;i¡:@aftero;	;;;" ;i¡;@;@:	@mido;	;"feature;i¡;@;"feature;i¡:@children[ ;@:@guarded0o;;"max-feature;o;
+;o;	;;;"	max-;i¬;@;i¬;o;	;;;" ;i¬;@;@;o;	;"feature;i¬;@;"feature;i¬;[ ;@;0o:Sass::Tree::CommentNode
+;:silent;["/* Min/Max for given */;iƒ;[ ;@o;;"
+query;o;
+;"breakpoint-generate;i≈;{ ;@;[	o;	;"media-string;i≈;@;"media_stringo;	;"min-feature;i≈;@;"min_featureo;	;"min-value;i≈;@;"min_valueo;	;"
+first;i≈;@;"
+first;i≈;[ ;@;0o;;"
+query;o;
+;"	join;i∆;{ ;@;[o;	;"
+query;i∆;@;"
+queryo;
+;"breakpoint-generate;i∆;{ ;@;[o;	;"media-string;i∆;@;"media_stringo;	;"max-feature;i∆;@;"max_featureo;	;"max-value;i∆;@;"max_value;i∆;[ ;@;0[o:Sass::Tree::CommentNode
+:
+@type:silent;["3/* If both are numbers, we've got a double! */;iR:@children[ ;@
+u;Ä+[o:Sass::Script::Operation
+:@operator:and:
+@lineiS:@operand2o; 
+;:eq;iS;	o:Sass::Script::String	:
+@type:string:@value"number;iS:@options{ :@operand1o:Sass::Script::Funcall
+:
+@name"type-of;iS:@keywords{ ;@
+:
+@args[o;
+;"nth;iS;{ ;@
+;[o:Sass::Script::Variable	;"breakpoint;iS;@
+:@underscored_name"breakpointo:Sass::Script::Number:@original"2:@numerator_units[ ;i;iS;@
+:@denominator_units[ ;@
+;o; 
+;;
+;iS;	o;	;;;"number;iS;@
+;o;
+;"type-of;iS;{ ;@
+;[o;
+;"nth;iS;{ ;@
+;[o;	;"breakpoint;iS;@
+;"breakpointo;;"1;[ ;i;iS;@
+;@;@
+;@
+u:Sass::Tree::IfNode[o:Sass::Script::Operation
+:@operator:and:
+@lineij:@operand2o; 
+;:eq;ij;	o:Sass::Script::String	:
+@type:string:@value"string;ij:@options{ :@operand1o:Sass::Script::Funcall
+:
+@name"type-of;ij:@keywords{ ;@
+:
+@args[o;
+;"nth;ij;{ ;@
+;[o:Sass::Script::Variable	;"breakpoint;ij;@
+:@underscored_name"breakpointo:Sass::Script::Number:@original"2:@numerator_units[ ;i;ij;@
+:@denominator_units[ ;@
+;o; 
+;;
+;ij;	o;	;;;"string;ij;@
+;o;
+;"type-of;ij;{ ;@
+;[o;
+;"nth;ij;{ ;@
+;[o;	;"breakpoint;ij;@
+;"breakpointo;;"1;[ ;i;ij;@
+;@;@
+;@
+u:Sass::Tree::IfNode [00[o:Sass::Tree::CommentNode
+:
+@type:silent:@value["a/* Because we can have either the first or second option be the feature, we switch on it. */:
+@linei}:@children[ :@options{ u:Sass::Tree::IfNodeŸ[o:Sass::Script::Operation
+:@operator:eq:
+@linei~:@operand2o:Sass::Script::String	:
+@type:identifier:@value"string;i~:@options{ :@operand1o:Sass::Script::Funcall
+:
+@name"type-of;i~:@keywords{ ;@	:
+@args[o;
+;"nth;i~;{ ;@	;[o:Sass::Script::Variable	;"breakpoint;i~;@	:@underscored_name"breakpointo:Sass::Script::Number:@original"1:@numerator_units[ ;i;i~;@	:@denominator_units[ ;@	u:Sass::Tree::IfNodeÊ[o:Sass::Script::Operation
+:@operator:eq:
+@linei}:@operand2o:Sass::Script::String	:
+@type:identifier:@value"string;i}:@options{ :@operand1o:Sass::Script::Funcall
+:
+@name"type-of;i}:@keywords{ ;@	:
+@args[o;
+;"nth;i};{ ;@	;[o:Sass::Script::Variable	;"breakpoint;i};@	:@underscored_name"breakpointo:Sass::Script::Number:@original"2:@numerator_units[ ;i;i};@	:@denominator_units[ ;@	0[o:Sass::Tree::VariableNode;"feature:
+@expro;
+;"nth;i~;{ ;@	;[o;	;"breakpoint;i~;@	;"breakpointo;;"2;[ ;i;i~;@	;@;i~:@children[ ;@	:@guarded0o;;"
+value;o;
+;"nth;i;{ ;@	;[o;	;"breakpoint;i;@	;"breakpointo;;"1;[ ;i;i;@	;@;i;[ ;@	;0[o:Sass::Tree::VariableNode;"feature:
+@expro;
+;"nth;i;{ ;@	;[o;	;"breakpoint;i;@	;"breakpointo;;"1;[ ;i;i;@	;@;i:@children[ ;@	:@guarded0o;;"
+value;o;
+;"nth;i{;{ ;@	;[o;	;"breakpoint;i{;@	;"breakpointo;;"2;[ ;i;i{;@	;@;i{;[ ;@	;0u;ë[o:Sass::Script::Operation
+:@operator:or:
+@lineiÇ:@operand2o; 
+;:eq;iÇ;	o:Sass::Script::String	:
+@type:string:@value"max-device-pixel-ratio;iÇ:@options{ :@operand1o:Sass::Script::Variable	:
+@name"feature;iÇ;@
+:@underscored_name"feature;@
+;o; 
+;;;iÇ;	o; 
+;;
+;iÇ;	o;	;;;"min-device-pixel-ratio;iÇ;@
+;o;	;"feature;iÇ;@
+;"feature;@
+;o; 
+;;
+;iÇ;	o;	;;;"device-pixel-ratio;iÇ;@
+;o;	;"feature;iÇ;@
+;"feature;@
+;@
+;@
+0[o:Sass::Tree::VariableNode;"
+value:
+@expro; 
+;:
+times;iÉ;	o:Sass::Script::Number:@original"	1dpi:@numerator_units["dpi;i;iÉ;@
+:@denominator_units[ ;o; 
+;;;iÉ;	o;	;"
+value;iÉ;@
+;"
+value;o;;"96;[ ;ie;iÉ;@
+;[ ;@
+;@
+;iÉ:@children[ ;@
+:@guarded0u:Sass::Tree::IfNodep[o:Sass::Script::Operation
+:@operator:eq:
+@lineiÑ:@operand2o:Sass::Script::String	:
+@type:string:@value"device-pixel-ratio;iÑ:@options{ :@operand1o:Sass::Script::Variable	:
+@name"feature;iÑ;@	:@underscored_name"feature;@	u:Sass::Tree::IfNodeÛ[o:Sass::Script::Operation
+:@operator:eq:
+@lineiá:@operand2o:Sass::Script::String	:
+@type:string:@value"min-device-pixel-ratio;iá:@options{ :@operand1o:Sass::Script::Variable	:
+@name"feature;iá;@	:@underscored_name"feature;@	u:Sass::Tree::IfNoden[o:Sass::Script::Operation
+:@operator:eq:
+@lineiä:@operand2o:Sass::Script::String	:
+@type:string:@value"max-device-pixel-ratio;iä:@options{ :@operand1o:Sass::Script::Variable	:
+@name"feature;iä;@	:@underscored_name"feature;@	0[o:Sass::Tree::VariableNode;"feature:
+@expro;
+	;;;"max-resolution;iã;@	;iã:@children[ ;@	:@guarded0[o:Sass::Tree::VariableNode;"feature:
+@expro;
+	;;;"min-resolution;ià;@	;ià:@children[ ;@	:@guarded0[o:Sass::Tree::VariableNode;"feature:
+@expro;
+	;;;"resolution;iÖ;@	;iÖ:@children[ ;@	:@guarded0o; 
+;;;["//* If EM Breakpoints are active, do it! */;	iè;
+[ ;@u;[o:Sass::Script::Operation
+:@operator:and:
+@lineiê:@operand2o; 
+;:eq;iê;	o:Sass::Script::String	:
+@type:string:@value"number;iê:@options{ :@operand1o:Sass::Script::Funcall
+:
+@name"type-of;iê:@keywords{ ;@
+:
+@args[o:Sass::Script::Variable	;"
+value;iê;@
+:@underscored_name"
+value;@
+;o;	;"breakpoint-to-ems;iê;@
+;"breakpoint_to_ems;@
+0[o:Sass::Tree::VariableNode;"
+value:
+@expro;
+;"breakpoint-to-base-em;ië;{ ;@
+;[o;	;"
+value;ië;@
+;"
+value;ië:@children[ ;@
+:@guarded0o; 
+;;;["/* Build the Query */;	iî;
+[ ;@o:Sass::Tree::VariableNode:
+@name"
+query:
+@expro:Sass::Script::Funcall
+;"breakpoint-generate;	iï:@keywords{ ;@:
+@args[	o:Sass::Script::Variable	;"media-string;	iï;@:@underscored_name"media_stringo;	;"feature;	iï;@;"featureo;	;"
+value;	iï;@;"
+valueo;	;"
+first;	iï;@;"
+first;	iï;
+[ ;@:@guarded0[
+u;∏[o:Sass::Script::Operation
+:@operator:eq:
+@lineik:@operand2o:Sass::Script::Bool:@valueT;ik:@options{ :@operand1o:Sass::Script::Funcall
+:
+@name"breakpoint-string-value;ik:@keywords{ ;@:
+@args[o;
+;"nth;ik;{ ;@;[o:Sass::Script::Variable	;"breakpoint;ik;@:@underscored_name"breakpointo:Sass::Script::Number:@original"1:@numerator_units[ ;i;ik;@:@denominator_units[ ;@u:Sass::Tree::IfNode’[00[o:Sass::Tree::VariableNode:
+@name"feature:
+@expro:Sass::Script::Funcall
+;"nth:
+@lineip:@keywords{ :@options{ :
+@args[o:Sass::Script::Variable	;"breakpoint;	ip;@:@underscored_name"breakpointo:Sass::Script::Number:@original"2:@numerator_units[ :@valuei;	ip;@:@denominator_units[ ;	ip:@children[ ;@:@guarded0o; ;"
+value;o;
+;"nth;	iq;
+{ ;@;[o;	;"breakpoint;	iq;@;"breakpointo;;"1;[ ;i;	iq;@;@;	iq;[ ;@;0[o:Sass::Tree::VariableNode;"feature:
+@expro;
+;"nth;il;{ ;@;[o;	;"breakpoint;il;@;"breakpointo;;"1;[ ;i;il;@;@;il:@children[ ;@:@guarded0o;;"
+value;o;
+;"nth;im;{ ;@;[o;	;"breakpoint;im;@;"breakpointo;;"2;[ ;i;im;@;@;im;[ ;@;0o:Sass::Tree::CommentNode
+;:silent;["//* If EM Breakpoints are active, do it! */;it:@children[ ;@
+u;[o:Sass::Script::Operation
+:@operator:and:
+@lineiu:@operand2o; 
+;:eq;iu;	o:Sass::Script::String	:
+@type:string:@value"number;iu:@options{ :@operand1o:Sass::Script::Funcall
+:
+@name"type-of;iu:@keywords{ ;@
+:
+@args[o:Sass::Script::Variable	;"
+value;iu;@
+:@underscored_name"
+value;@
+;o;	;"breakpoint-to-ems;iu;@
+;"breakpoint_to_ems;@
+0[o:Sass::Tree::VariableNode;"
+value:
+@expro;
+;"breakpoint-to-base-em;iv;{ ;@
+;[o;	;"
+value;iv;@
+;"
+value;iv:@children[ ;@
+:@guarded0o;
+;;;["/* Build the Query */;iy;[ ;@
+o:Sass::Tree::VariableNode;"
+query:
+@expro;
+;"breakpoint-generate;iz;{ ;@
+;[	o;	;"media-string;iz;@
+;"media_stringo;	;"feature;iz;@
+;"featureo;	;"
+value;iz;@
+;"
+valueo;	;"
+first;iz;@
+;"
+first;iz;[ ;@
+:@guarded0[o:Sass::Tree::CommentNode
+;:silent;["/* See which is larger. */;iT:@children[ ;@
+u;‘[o:Sass::Script::Operation
+:@operator:gt:
+@lineiU:@operand2o:Sass::Script::Funcall
+:
+@name"nth;iU:@keywords{ :@options{ :
+@args[o:Sass::Script::Variable	;"breakpoint;iU;@
+:@underscored_name"breakpointo:Sass::Script::Number:@original"2:@numerator_units[ :@valuei;iU;@
+:@denominator_units[ :@operand1o;
+
+;"nth;iU;{ ;@
+;[o;	;"breakpoint;iU;@
+;"breakpointo;;"1;[ ;i;iU;@
+;@;@
+u:Sass::Tree::IfNode€[00[o:Sass::Tree::VariableNode:
+@name"min-value:
+@expro:Sass::Script::Funcall
+;"nth:
+@lineiZ:@keywords{ :@options{ :
+@args[o:Sass::Script::Variable	;"breakpoint;	iZ;@:@underscored_name"breakpointo:Sass::Script::Number:@original"1:@numerator_units[ :@valuei;	iZ;@:@denominator_units[ ;	iZ:@children[ ;@:@guarded0o; ;"max-value;o;
+;"nth;	i[;
+{ ;@;[o;	;"breakpoint;	i[;@;"breakpointo;;"2;[ ;i;	i[;@;@;	i[;[ ;@;0[o:Sass::Tree::VariableNode;"min-value:
+@expro;
+
+;"nth;iV;{ ;@
+;[o;	;"breakpoint;iV;@
+;"breakpointo;;"2;[ ;i;iV;@
+;@;iV:@children[ ;@
+:@guarded0o;;"max-value;o;
+
+;"nth;iW;{ ;@
+;[o;	;"breakpoint;iW;@
+;"breakpointo;;"1;[ ;i;iW;@
+;@;iW;[ ;@
+;0o;
+;;;["//* If EM Breakpoints are active, do it! */;i^;[ ;@
+u;[o:Sass::Script::Operation
+:@operator:and:
+@linei_:@operand2o; 
+;:eq;i_;	o:Sass::Script::String	:
+@type:string:@value"number;i_:@options{ :@operand1o:Sass::Script::Funcall
+:
+@name"type-of;i_:@keywords{ ;@
+:
+@args[o:Sass::Script::Variable	;"min-value;i_;@
+:@underscored_name"min_value;@
+;o;	;"breakpoint-to-ems;i_;@
+;"breakpoint_to_ems;@
+0[o:Sass::Tree::VariableNode;"min-value:
+@expro;
+;"breakpoint-to-base-em;i`;{ ;@
+;[o;	;"min-value;i`;@
+;"min_value;i`:@children[ ;@
+:@guarded0u;[o:Sass::Script::Operation
+:@operator:and:
+@lineib:@operand2o; 
+;:eq;ib;	o:Sass::Script::String	:
+@type:string:@value"number;ib:@options{ :@operand1o:Sass::Script::Funcall
+:
+@name"type-of;ib:@keywords{ ;@
+:
+@args[o:Sass::Script::Variable	;"max-value;ib;@
+:@underscored_name"max_value;@
+;o;	;"breakpoint-to-ems;ib;@
+;"breakpoint_to_ems;@
+0[o:Sass::Tree::VariableNode;"max-value:
+@expro;
+;"breakpoint-to-base-em;ic;{ ;@
+;[o;	;"max-value;ic;@
+;"max_value;ic:@children[ ;@
+:@guarded0o;
+;;;["/* Min/Max for given */;if;[ ;@
+o:Sass::Tree::VariableNode;"
+query:
+@expro;
+;"breakpoint-generate;ig;{ ;@
+;[	o;	;"media-string;ig;@
+;"media_stringo;	;"min-feature;ig;@
+;"min_featureo;	;"min-value;ig;@
+;"min_valueo;	;"
+first;ig;@
+;"
+first;ig;[ ;@
+:@guarded0o;;"
+query; o;
+;"	join;ih;{ ;@
+;[o;	;"
+query;ih;@
+;"
+queryo;
+;"breakpoint-generate;ih;{ ;@
+;[o;	;"media-string;ih;@
+;"media_stringo;	;"max-feature;ih;@
+;"max_featureo;	;"max-value;ih;@
+;"max_value;ih;[ ;@
+;!0[o:Sass::Tree::VariableNode;"
+value:
+@expro;	;"breakpoint;iE;@
+;"breakpoint;iE:@children[ ;@
+:@guarded0u;«[o:Sass::Script::Operation
+:@operator:eq:
+@lineiF:@operand2o:Sass::Script::String	:
+@type:string:@value"number;iF:@options{ :@operand1o:Sass::Script::Funcall
+:
+@name"type-of;iF:@keywords{ ;@	:
+@args[o:Sass::Script::Variable	;"breakpoint;iF;@	:@underscored_name"breakpoint;@	0[o:Sass::Tree::VariableNode;"feature:
+@expro;	;"breakpoint-default-feature;iG;@	;"breakpoint_default_feature;iG:@children[ ;@	:@guarded0o:Sass::Tree::CommentNode
+:
+@type:silent;["//* If EM Breakpoints are active, do it! */;iJ;[ ;@
+u;[o:Sass::Script::Operation
+:@operator:and:
+@lineiK:@operand2o; 
+;:eq;iK;	o:Sass::Script::String	:
+@type:string:@value"number;iK:@options{ :@operand1o:Sass::Script::Funcall
+:
+@name"type-of;iK:@keywords{ ;@
+:
+@args[o:Sass::Script::Variable	;"
+value;iK;@
+:@underscored_name"
+value;@
+;o;	;"breakpoint-to-ems;iK;@
+;"breakpoint_to_ems;@
+0[o:Sass::Tree::VariableNode;"
+value:
+@expro;
+;"breakpoint-to-base-em;iL;{ ;@
+;[o;	;"
+value;iL;@
+;"
+value;iL:@children[ ;@
+:@guarded0o;
+;;;["/* Build the Query */;iN;[ ;@
+o;;"
+query;o:Sass::Script::Funcall
+;"breakpoint-generate;iO:@keywords{ ;@
+:
+@args[	o;	;"media-string;iO;@
+;"media_stringo;	;"feature;iO;@
+;"featureo;	;"
+value;iO;@
+;"
+valueo;	;"
+first;iO;@
+;"
+first;iO;[ ;@
+;0o:Sass::Tree::ReturnNode	;o;	;"
+query;iÕ;@;"
+query;iÕ;	[ ;@;@;[[o;;"breakpoint;@;"breakpoint0[o;;"media-string;@;"media_string0[o;;"
+first;@;"
+firsto;;F;i7;@o;;"breakpoint-generate;i–;T;	[
+o;
+
+;;;[",/* Media Query string to be returned */;i—;	[ ;@o;;"new-string;o;	;;;" ;i“;@;i“;	[ ;@;0o;
+
+;;;["</* If it's the first item, it gets special treatment */;i‘;	[ ;@u;/[o:Sass::Script::Operation
+:@operator:eq:
+@linei’:@operand2o:Sass::Script::Bool:@valueT;i’:@options{ :@operand1o:Sass::Script::Variable	:
+@name"
+first;i’;@:@underscored_name"
+first;@u:Sass::Tree::IfNode0[00[u:Sass::Tree::IfNode[o:Sass::Script::Operation
+:@operator:neq:
+@lineiÊ:@operand2o:Sass::Script::Bool:@valueF;iÊ:@options{ :@operand1o:Sass::Script::Variable	:
+@name"feature;iÊ;@:@underscored_name"feature;@u:Sass::Tree::IfNodeè[00[o:Sass::Tree::VariableNode:
+@name"new-string:
+@expro:Sass::Script::Funcall
+;"unquote:
+@lineiÍ:@keywords{ :@options{ :
+@args[o:&Sass::Script::StringInterpolation
+:@beforeo:Sass::Script::String	:
+@type:string:@value"
+and (;	iÍ;@;	iÍ:@aftero;	;;;");	iÍ;@;@:	@mido:Sass::Script::Variable	;"
+value;	iÍ;@:@underscored_name"
+value;	iÍ:@children[ ;@:@guarded0[o:Sass::Tree::VariableNode;"new-string:
+@expro:Sass::Script::Funcall
+;"unquote;iÁ:@keywords{ ;@:
+@args[o:&Sass::Script::StringInterpolation
+:@beforeo:Sass::Script::String	:
+@type:string;"
+and (;iÁ;@;iÁ:@aftero;
+;o;	;;;": ;iÁ;@;iÁ;o;	;;;");iÁ;@;@:	@mido;	;"
+value;iÁ;@;"
+value;@;o;	;"feature;iÁ;@;"feature;iÁ:@children[ ;@:@guarded0[
+o:Sass::Tree::CommentNode
+:
+@type:silent;["/* And Statement */;i÷:@children[ ;@o:Sass::Tree::VariableNode;"and:
+@expro:Sass::Script::String	;:string;"	and ;i◊;@;i◊;[ ;@:@guarded0o;
+;;;[">/* If $media is blank (i.e. all), remove and statement */;iÿ;[ ;@u;B[o:Sass::Script::Operation
+:@operator:eq:
+@lineiŸ:@operand2o:Sass::Script::String	:
+@type:string:@value" ;iŸ:@options{ :@operand1o:Sass::Script::Variable	:
+@name"
+media;iŸ;@	:@underscored_name"
+media;@	0[o:Sass::Tree::VariableNode;"and:
+@expro;
+	;;;" ;i⁄;@	;i⁄:@children[ ;@	:@guarded0u;®[o:Sass::Script::Operation
+:@operator:neq:
+@linei›:@operand2o:Sass::Script::Bool:@valueF;i›:@options{ :@operand1o:Sass::Script::Variable	:
+@name"feature;i›;@:@underscored_name"feature;@u:Sass::Tree::IfNode[[00[o:Sass::Tree::VariableNode:
+@name"new-string:
+@expro: Sass::Script::Interpolation:@whitespace_after0:@before0:
+@linei·:@whitespace_beforei§:@aftero:Sass::Script::Funcall
+;"unquote;i·:@keywords{ :@options{ :
+@args[o:&Sass::Script::StringInterpolation
+;
+o:Sass::Script::String	:
+@type:string:@value" ;i·;@;i·;o;
+;
+o;	;;;"(;i·;@;i·;o;	;;;");i·;@;@:	@mido:Sass::Script::Variable	;"
+value;i·;@:@underscored_name"
+value;@;o;	;"and;i·;@;"and;@:@originally_textF;o;	;"
+media;i·;@;"
+media;i·:@children[ ;@:@guarded0[o:Sass::Tree::VariableNode;"new-string:
+@expro: Sass::Script::Interpolation:@whitespace_after0:@before0;iﬁ:@whitespace_beforeiJ:@aftero:Sass::Script::Funcall
+;"unquote;iﬁ:@keywords{ ;@:
+@args[o:&Sass::Script::StringInterpolation
+;o:Sass::Script::String	:
+@type:string;" ;iﬁ;@;iﬁ;o;
+;o;	;;;"(;iﬁ;@;iﬁ;o;
+;o;	;;;": ;iﬁ;@;iﬁ;o;	;;;");iﬁ;@;@:	@mido;	;"
+value;iﬁ;@;"
+value;@; o;	;"feature;iﬁ;@;"feature;@; o;	;"and;iﬁ;@;"and;@:@originally_textF; o;	;"
+media;iﬁ;@;"
+media;iﬁ:@children[ ;@:@guarded0o;&	;o;	;"new-string;iÓ;@;"new_string;iÓ;	[ ;@;@;[	[o;;"
+media;@;"
+media0[o;;"feature;@;"feature0[o;;"
+value;@;"
+value0[o;;"
+first;@;"
+firsto;;F;i–;@o;;"breakpoint-to-base-em;iÒ;T;	[o;;"	unit;o;$
+;"	unit;iÚ;%{ ;@;[o;	;"
+value;iÚ;@;"
+value;iÚ;	[ ;@;0u;É[o:Sass::Script::Operation
+:@operator:eq:
+@lineiÙ:@operand2o:Sass::Script::String	:
+@type:string:@value"px;iÙ:@options{ :@operand1o:Sass::Script::Variable	:
+@name"	unit;iÙ;@	:@underscored_name"	unit;@	u:Sass::Tree::IfNodez[o:Sass::Script::Operation
+:@operator:eq:
+@linei˜:@operand2o:Sass::Script::String	:
+@type:string:@value"%;i˜:@options{ :@operand1o:Sass::Script::Variable	:
+@name"	unit;i˜;@	:@underscored_name"	unit;@	u:Sass::Tree::IfNodes[o:Sass::Script::Operation
+:@operator:eq:
+@linei˙:@operand2o:Sass::Script::String	:
+@type:string:@value"em;i˙:@options{ :@operand1o:Sass::Script::Variable	:
+@name"	unit;i˙;@	:@underscored_name"	unit;@	u:Sass::Tree::IfNode$[o:Sass::Script::Operation
+:@operator:eq:
+@linei˝:@operand2o:Sass::Script::String	:
+@type:string:@value"pt;i˝:@options{ :@operand1o:Sass::Script::Variable	:
+@name"	unit;i˝;@	:@underscored_name"	unit;@	u:Sass::Tree::IfNode[00[o:Sass::Tree::ReturnNode	:
+@expro:Sass::Script::Variable	:
+@name"
+value:
+@linei:@options{ :@underscored_name"
+value;	i:@children[ ;
+@
+o:Sass::Tree::CommentNode
+:
+@type:silent:@value["C/*    @warn 'Everything is terrible! What have you done?!'; */;	i;[ ;
+@
+[o:Sass::Tree::ReturnNode	:
+@expro; 
+;:
+times;i˛;	o:Sass::Script::Number:@original"1em:@numerator_units["em;i;i˛;@	:@denominator_units[ ;o; 
+;:div;i˛;	o;;"	12pt;["pt;i;i˛;@	;[ ;o;	;"
+value;i˛;@	;"
+value;@	;@	;i˛:@children[ ;@	[o:Sass::Tree::ReturnNode	:
+@expro;	;"
+value;i˚;@	;"
+value;i˚:@children[ ;@	[o:Sass::Tree::ReturnNode	:
+@expro; 
+;:
+times;i¯;	o:Sass::Script::Number:@original"1em:@numerator_units["em;i;i¯;@	:@denominator_units[ ;o; 
+;:div;i¯;	o;;"	100%;["%;ii;i¯;@	;[ ;o;	;"
+value;i¯;@	;"
+value;@	;@	;i¯:@children[ ;@	[o:Sass::Tree::ReturnNode	:
+@expro; 
+;:
+times;iı;	o:Sass::Script::Number:@original"1em:@numerator_units["em;i;iı;@	:@denominator_units[ ;o; 
+;:div;iı;	o;;"	16px;["px;i;iı;@	;[ ;o;	;"
+value;iı;@	;"
+value;@	;@	;iı:@children[ ;@	;@;[[o;;"
+value;@;"
+value0o;;"breakpoint-min-max;i;T;	[u;Õ[o:Sass::Script::Operation
+:@operator:or:
+@linei:@operand2o; 
+;:eq;i;	o:Sass::Script::String	:
+@type:string:@value"device-pixel-ratio;i:@options{ :@operand1o:Sass::Script::Variable	:
+@name"feature;i;@
+:@underscored_name"feature;@
+;o; 
+;;;i;	o; 
+;;
+;i;	o;	;;;"
+width;i;@
+;o;	;"feature;i;@
+;"feature;@
+;o; 
+;;;i;	o; 
+;;
+;i;	o;	;;;"resolution;i;@
+;o;	;"feature;i;@
+;"feature;@
+;o; 
+;;;i;	o; 
+;;
+;i;	o;	;;;"monochrome;i;@
+;o;	;"feature;i;@
+;"feature;@
+;o; 
+;;;i;	o; 
+;;
+;i;	o;	;;;"height;i;@
+;o;	;"feature;i;@
+;"feature;@
+;o; 
+;;;i;	o; 
+;;
+;i;	o;	;;;"device-width;i;@
+;o;	;"feature;i;@
+;"feature;@
+;o; 
+;;;i;	o; 
+;;
+;i;	o;	;;;"device-height;i;@
+;o;	;"feature;i;@
+;"feature;@
+;o; 
+;;;i;	o; 
+;;
+;i;	o;	;;;"aspect-ratio;i;@
+;o;	;"feature;i;@
+;"feature;@
+;o; 
+;;;i;	o; 
+;;
+;i;	o;	;;;"color-index;i;@
+;o;	;"feature;i;@
+;"feature;@
+;o; 
+;;
+;i;	o;	;;;"
+color;i;@
+;o;	;"feature;i;@
+;"feature;@
+;@
+;@
+;@
+;@
+;@
+;@
+;@
+;@
+;@
+u:Sass::Tree::IfNode{[00[o:Sass::Tree::ReturnNode	:
+@expro:Sass::Script::Bool:@valueF:
+@linei:@options{ ;	i:@children[ ;
+@	[o:Sass::Tree::ReturnNode	:
+@expro:Sass::Script::Bool;T;i;@
+;i:@children[ ;@
+;@;[[o;;"feature;@;"feature0o;;"breakpoint-string-value;i;T;	[u;±[o:Sass::Script::Operation
+:@operator:or:
+@linei:@operand2o; 
+;:eq;i;	o:Sass::Script::String	:
+@type:string:@value"
+color;i:@options{ :@operand1o:Sass::Script::Variable	:
+@name"feature;i;@
+:@underscored_name"feature;@
+;o; 
+;;;i;	o; 
+;;
+;i;	o;	;;;"	scan;i;@
+;o;	;"feature;i;@
+;"feature;@
+;o; 
+;;
+;i;	o;	;;;"orientation;i;@
+;o;	;"feature;i;@
+;"feature;@
+;@
+;@
+u:Sass::Tree::IfNode{[00[o:Sass::Tree::ReturnNode	:
+@expro:Sass::Script::Bool:@valueF:
+@linei:@options{ ;	i:@children[ ;
+@	[o:Sass::Tree::ReturnNode	:
+@expro:Sass::Script::Bool;T;i;@
+;i:@children[ ;@
+;@;[[o;;"feature;@;"feature0;@
